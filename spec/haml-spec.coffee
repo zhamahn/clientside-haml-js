@@ -1028,3 +1028,91 @@ describe 'haml', () ->
         '    This is short.\n' +
         '  </p>\n' +
         '</whoo>\n')
+
+  describe 'Angular attributes', () ->
+    it 'should render correct attributes', () ->
+      html = haml.compileHaml(
+        {
+          source: '%span\n' +
+          '%a-b((event)="event" *something empty (event2)="event" [(model)]="model")'
+        }
+      )()
+      expect(html).toEqual(
+        '<span>\n' +
+        '</span>\n' +
+        '<a-b (event)="event" *something empty (event2)="event" [(model)]="model">\n</a-b>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%a-b(i18n)'
+        }
+      )()
+      expect(html).toEqual(
+        '<a-b i18n>\n</a-b>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%a-b(#something)'
+        }
+      )()
+      expect(html).toEqual(
+        '<a-b #something>\n</a-b>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%input(type="string")'
+        }
+      )()
+      expect(html).toEqual(
+        '<input type="string"/>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%span\n' +
+          '  ({{test}})'
+        }
+      )()
+      expect(html).toEqual(
+        '<span>\n' +
+        '  ({{test}})\n' +
+        '</span>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%span(testing=11)'
+        }
+      )()
+      expect(html).toEqual(
+        '<span testing=11>\n' +
+        '</span>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%span(a="a")\n' +
+          '  #some-id([test]="\'test\'")'
+        }
+      )()
+      expect(html).toEqual(
+        '<span a="a">\n' +
+        '  <div id="some-id" [test]="\'test\'">\n' +
+        '  </div>\n' +
+        '</span>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%span(a="a" #templateID)'
+        }
+      )()
+      expect(html).toEqual(
+        '<span a="a" #templateID>\n' +
+        '</span>\n'
+      )
+      html = haml.compileHaml(
+        {
+          source: '%span(@animation)'
+        }
+      )()
+      expect(html).toEqual(
+        '<span @animation>\n' +
+        '</span>\n'
+      )

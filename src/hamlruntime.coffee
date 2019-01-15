@@ -93,7 +93,12 @@ HamlRuntime =
           else if attr == 'class' and attributes[attr] instanceof Array
             html += ' ' + attr + '="' + _(attributes[attr]).flatten().join(' ') + '"'
           else
-            html += ' ' + attr + '="' + haml.attrValue(attr, attributes[attr]) + '"'
+            if typeof attributes[attr] == 'number'
+              html += ' ' + attr + '=' + haml.attrValue(attr, attributes[attr])
+            else
+              html += ' ' + attr + '="' + haml.attrValue(attr, attributes[attr]) + '"'
+        else if attributes[attr] == undefined
+          html += ' ' + attr
     html
 
   ###
@@ -112,7 +117,7 @@ HamlRuntime =
     ID, FOR and CLASS attributes will expand to arrays when multiple values are provided
   ###
   combineAttributes: (attributes, attrName, attrValue) ->
-    if haml.hasValue(attrValue)
+    if attrValue != false
       if attrName == 'id' and attrValue.toString().length > 0
         if attributes and attributes.id instanceof Array
           attributes.id.unshift(attrValue)

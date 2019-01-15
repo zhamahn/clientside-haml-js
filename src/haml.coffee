@@ -379,9 +379,9 @@ haml =
       tokeniser.getNextToken()
       haml._whitespace(tokeniser)
 
-      return { name: name, value: '' } unless tokeniser.token.equal
+      return { name: name, value: undefined } unless tokeniser.token.equal
 
-      tokeniser.getNextToken();
+      tokeniser.getNextToken()
       haml._whitespace(tokeniser)
       if !tokeniser.token.string and !tokeniser.token.identifier
         throw tokeniser.parseError("Expected a quoted string or an identifier for the attribute value")
@@ -394,7 +394,7 @@ haml =
 
 
   _isSelfClosingTag: (tag) ->
-    tag in ['meta', 'img', 'link', 'script', 'br', 'hr']
+    tag in ['meta', 'img', 'link', 'script', 'br', 'hr', 'input']
 
   _tagHasContents: (indent, tokeniser) ->
     if !tokeniser.isEolOrEof()

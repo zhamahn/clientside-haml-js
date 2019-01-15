@@ -7,10 +7,14 @@ class Tokeniser
 
   tokenMatchers:
     whitespace:       /[ \t]+/g,
-    element:          /%[a-zA-Z][a-zA-Z0-9]*/g,
+    element:          /%[a-zA-Z][a-zA-Z0-9-]*/g,
     idSelector:       /#[a-zA-Z_\-][a-zA-Z0-9_\-]*/g,
     classSelector:    /\.[a-zA-Z0-9_\-]+/g,
-    identifier:       /[a-zA-Z][a-zA-Z0-9\-]*/g,
+    identifier:      new RegExp([
+      '([\\*#@]?[a-zA-Z][a-zA-Z0-9\\-\\.]*)',
+      '(\\[\\(?[\\*]?[a-zA-Z][a-zA-Z0-9\\-\\.]*\\)?\\])',
+      '(\\([\\*]?[a-zA-Z][a-zA-Z0-9\\-\\.]*\\))',
+    ].join('|'), 'g'),
     quotedString:     /[\'][^\'\n]*[\']/g,
     quotedString2:    /[\"][^\"\n]*[\"]/g,
     comment:          /\-#/g,
@@ -20,6 +24,7 @@ class Tokeniser
     doctype:          /!!!/g,
     continueLine:     /\|\s*\n/g,
     filter:           /:\w+/g
+    numberLiteral:    /\d+/g
 
   constructor: (options) ->
     @buffer = null
@@ -97,6 +102,7 @@ class Tokeniser
       @token = { eof: true, token: 'EOF' }
     else
       @initLine()
+      startOfLine = @characterNumber == 0
 
       if !@token
         ch = @buffer.charCodeAt(@bufferIndex)
@@ -112,20 +118,29 @@ class Tokeniser
           @characterNumber = 0
           @currentLine = @getCurrentLine()
 
-      @matchMultiCharToken(@tokenMatchers.whitespace, { ws: true, token: 'WS' })
+      @matchMultiCharToken(@tokenMatchers.whitespace, { ws: true, token: 'WS', indent: startOfLine })
       @matchMultiCharToken(@tokenMatchers.continueLine, { continueLine: true, token: 'CONTINUELINE' })
-      @matchMultiCharToken(@tokenMatchers.element, { element: true, token: 'ELEMENT' }, (matched) -> matched.substring(1) )
-      @matchMultiCharToken(@tokenMatchers.idSelector, { idSelector: true, token: 'ID' }, (matched) -> matched.substring(1) )
-      @matchMultiCharToken(@tokenMatchers.classSelector, { classSelector: true, token: 'CLASS' }, (matched) -> matched.substring(1) )
-      @matchMultiCharToken(@tokenMatchers.identifier, { identifier: true, token: 'IDENTIFIER' })
+      if @prevToken?.idSelector || @prevToken?.classSelector || @prevToken?.ws || @prevToken == null || @prevToken?.eol
+        @matchMultiCharToken(@tokenMatchers.element, { element: true, token: 'ELEMENT' }, (matched) -> matched.substring(1) )
+      if @prevToken?.element || @prevToken?.classSelector || @prevToken == null || @prevToken?.indent || @prevToken?.eol
+        @matchMultiCharToken(@tokenMatchers.idSelector, { idSelector: true, token: 'ID' }, (matched) -> matched.substring(1) )
+      if @prevToken?.element || @prevToken?.idSelector || @prevToken?.ws || @prevToken?.classSelector || @prevToken == null || @prevToken?.eol
+        @matchMultiCharToken(@tokenMatchers.classSelector, { classSelector: true, token: 'CLASS' }, (matched) -> matched.substring(1) )
+      if @prevToken?.openBracket || @prevToken?.ws
+        @matchMultiCharToken(@tokenMatchers.identifier, { identifier: true, token: 'IDENTIFIER' })
       @matchMultiCharToken(@tokenMatchers.doctype, { doctype: true, token: 'DOCTYPE' })
       @matchMultiCharToken(@tokenMatchers.filter, { filter: true, token: 'FILTER' }, (matched) -> matched.substring(1) )
 
       if !@token
+        tokenString = undefined
         str = @matchToken(@tokenMatchers.quotedString)
         str = @matchToken(@tokenMatchers.quotedString2) if not str
+        if not str
+          str = @matchToken(@tokenMatchers.numberLiteral)
+          tokenString = parseInt(str)
         if str
-          @token = { string: true, token: 'STRING', tokenString: str.substring(1, str.length - 1), matched: str }
+          tokenString ||= str.substring(1, str.length - 1)
+          @token = { string: true, token: 'STRING', tokenString: tokenString, matched: str }
           @advanceCharsInBuffer(str.length)
 
       @matchMultiCharToken(@tokenMatchers.comment, { comment: true, token: 'COMMENT' })
@@ -138,7 +153,8 @@ class Tokeniser
       if !@token and @buffer and @buffer.charAt(@bufferIndex) == '{' and !@prevToken.ws
         @matchJavascriptHash()
 
-      @matchSingleCharToken('(', { openBracket: true, token: 'OPENBRACKET' })
+      if @prevToken?.element || @prevToken?.idSelector || @prevToken?.classSelector
+        @matchSingleCharToken('(', { openBracket: true, token: 'OPENBRACKET' })
       @matchSingleCharToken(')', { closeBracket: true, token: 'CLOSEBRACKET' })
       @matchSingleCharToken('=', { equal: true, token: 'EQUAL' })
       @matchSingleCharToken('/', { slash: true, token: 'SLASH' })
